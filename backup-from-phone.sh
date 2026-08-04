@@ -46,22 +46,3 @@ if "$ADB" shell test -f /data/local/tmp/start-win10-kvm.sh; then
 else
     echo "Note: Keeping the local start-win10-kvm.sh; no copy was installed on the phone."
 fi
-
-if command -v shasum >/dev/null 2>&1; then
-    (
-        cd "$ROOT"
-        shasum -a 256 \
-            QEMU_VARS.fd \
-            win.qcow2 \
-            win10.iso \
-            virtio-win.iso \
-            libkvm_flash0_only.so \
-            kvm_flash0_only.c \
-            limbo_kvm_untrusted29.zip \
-            start-win10-kvm.sh \
-            restore-to-phone.sh \
-            backup-from-phone.sh \
-            > MANIFEST.sha256
-    )
-    echo "SHA-256 manifest written: $ROOT/MANIFEST.sha256"
-fi

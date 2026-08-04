@@ -34,12 +34,60 @@ if "$ADB" shell su -c 'pidof qemu-system-aarch64 >/dev/null 2>&1'; then
     exit 1
 fi
 
+qcow2_temp_dir=
+
+cleanup_qcow2_chunks() {
+    if [ -n "$qcow2_temp_dir" ] && [ -d "$qcow2_temp_dir" ]; then
+        case "$qcow2_temp_dir" in
+            "$qcow2_temp_base"/windowsinqemu-qcow2.*)
+                rm -rf -- "$qcow2_temp_dir"
+                ;;
+        esac
+    fi
+}
+
+restore_windows_disk() {
+    qcow2_size=$(wc -c < "$ROOT/win.qcow2" | tr -d '[:space:]')
+    qcow2_chunk_size=$(( (qcow2_size + 1) / 2 ))
+    qcow2_temp_base=${TMPDIR:-/tmp}
+    qcow2_temp_base=${qcow2_temp_base%/}
+    qcow2_temp_dir=$(mktemp -d "$qcow2_temp_base/windowsinqemu-qcow2.XXXXXX")
+    trap cleanup_qcow2_chunks 0 HUP INT TERM
+
+    qcow2_part1=$qcow2_temp_dir/win.qcow2.part1
+    qcow2_part2=$qcow2_temp_dir/win.qcow2.part2
+
+    head -c "$qcow2_chunk_size" "$ROOT/win.qcow2" > "$qcow2_part1"
+    [ "$(wc -c < "$qcow2_part1" | tr -d '[:space:]')" = "$qcow2_chunk_size" ]
+
+    "$ADB" shell rm -f \
+        /sdcard/Limbo/win.qcow2 \
+        /sdcard/Limbo/win.qcow2.part2
+    "$ADB" push "$qcow2_part1" /sdcard/Limbo/win.qcow2
+    rm -f -- "$qcow2_part1"
+
+    qcow2_part2_offset=$((qcow2_chunk_size + 1))
+    qcow2_part2_size=$((qcow2_size - qcow2_chunk_size))
+    tail -c "+$qcow2_part2_offset" "$ROOT/win.qcow2" > "$qcow2_part2"
+    [ "$(wc -c < "$qcow2_part2" | tr -d '[:space:]')" = "$qcow2_part2_size" ]
+
+    "$ADB" push "$qcow2_part2" /sdcard/Limbo/win.qcow2.part2
+    "$ADB" shell 'cat /sdcard/Limbo/win.qcow2.part2 >> /sdcard/Limbo/win.qcow2 && rm -f /sdcard/Limbo/win.qcow2.part2'
+
+    qcow2_remote_size=$("$ADB" shell stat -c %s /sdcard/Limbo/win.qcow2 | tr -d '\r')
+    [ "$qcow2_remote_size" = "$qcow2_size" ]
+
+    cleanup_qcow2_chunks
+    qcow2_temp_dir=
+    trap - 0 HUP INT TERM
+}
+
 echo '[1/4] Preparing target directories'
 "$ADB" shell mkdir -p /sdcard/Limbo
 
 echo '[2/4] Restoring UEFI variables, the Windows disk, and ISOs'
 "$ADB" push "$ROOT/QEMU_VARS.fd" /sdcard/Limbo/QEMU_VARS.fd
-"$ADB" push "$ROOT/win.qcow2" /sdcard/Limbo/win.qcow2
+restore_windows_disk
 "$ADB" push "$ROOT/win10.iso" /sdcard/Limbo/win10.iso
 "$ADB" push "$ROOT/virtio-win.iso" /sdcard/Limbo/virtio-win.iso
 
