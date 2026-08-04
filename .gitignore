@@ -1,0 +1,11 @@
+/win.qcow2
+/win10.iso
+/virtio-win.iso
+/*.qcow2
+/*.iso
+
+/MANIFEST.sha256
+/*.partial
+/*.part
+
+.DS_Store

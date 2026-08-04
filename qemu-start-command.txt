@@ -1,0 +1,103 @@
+NOTE: The maintained and recommended launcher is start-win10-kvm.sh.
+The commands below are retained as development notes only.
+
+In case of crashes use these masks to prevent them lol
+Host CPUs	Cluster	Affinity mask
+CPU0–CPU3	Little	0f
+CPU4–CPU5	Middle	30
+CPU6–CPU7	Big 	c0
+For: /system/bin/taskset c0 /system/bin/env
+
+### INSTALL IN TERMUX
+
+pkg update
+pkg install qemu-system-aarch64-headless qemu-utils
+
+
+### WIN ISO DVD
+
+su -c "
+/system/bin/taskset c0 /system/bin/env \
+LD_PRELOAD=/data/local/tmp/libkvm_flash0_only.so \
+/data/data/com.termux/files/usr/bin/qemu-system-aarch64 \
+  -name Win10-ARM64 \
+  -machine virt,accel=kvm,gic-version=host \
+  -cpu host \
+  -smp 6,sockets=1,cores=6,threads=1 \
+  -m 4096 \
+  -drive if=pflash,format=raw,unit=0,readonly=on,file=/data/data/com.termux/files/usr/share/qemu/edk2-aarch64-code.fd \
+  -drive if=pflash,format=raw,unit=1,file=/sdcard/Limbo/QEMU_VARS.fd \
+  -device ich9-ahci,id=sata \
+  -drive if=none,id=system,format=qcow2,file=/sdcard/Limbo/win.qcow2,cache=writeback,aio=threads,discard=unmap \
+  -device ide-hd,drive=system,bus=sata.0,bootindex=2 \
+  -device qemu-xhci,id=xhci \
+  -drive if=none,id=installer,format=raw,media=cdrom,readonly=on,file=/sdcard/Limbo/win10.iso \
+  -device usb-storage,drive=installer,bus=xhci.0,bootindex=1,removable=on \
+  -device usb-kbd,bus=xhci.0 \
+  -device usb-tablet,bus=xhci.0 \
+  -device ramfb \
+  -netdev user,id=net0 \
+  -device e1000,netdev=net0 \
+  -device virtio-rng-pci \
+  -rtc base=localtime \
+  -object secret,id=vncpass,data=1234 \
+  -display vnc=127.0.0.1:8,password-secret=vncpass \
+  -monitor tcp:127.0.0.1:55555,server=on,wait=off
+"
+
+### WIN HARD DRIVE W NET
+
+su -c '
+exec /system/bin/taskset c0 /system/bin/env \
+LD_PRELOAD=/data/local/tmp/libkvm_flash0_only.so \
+/data/data/com.termux/files/usr/bin/qemu-system-aarch64 \
+  -name Win10-ARM64 \
+  -machine virt,accel=kvm,gic-version=host \
+  -cpu host \
+  -smp 6,sockets=1,cores=6,threads=1 \
+  -m 4096 \
+  -drive if=pflash,format=raw,unit=0,readonly=on,file=/data/data/com.termux/files/usr/share/qemu/edk2-aarch64-code.fd \
+  -drive if=pflash,format=raw,unit=1,file=/sdcard/Limbo/QEMU_VARS.fd \
+  -drive if=none,id=system,format=qcow2,file=/sdcard/Limbo/win.qcow2,cache=writeback,aio=threads,discard=unmap \
+  -device nvme,id=nvme0,drive=system,serial=WIN10NVME,bootindex=1 \
+  -boot order=c,menu=on \
+  -device qemu-xhci,id=xhci \
+  -device usb-kbd,bus=xhci.0 \
+  -device usb-tablet,bus=xhci.0 \
+  -drive if=none,id=virtiodrv,format=raw,media=cdrom,readonly=on,file=/sdcard/Limbo/virtio-win.iso \
+  -device usb-storage,id=virtiocd,drive=virtiodrv,bus=xhci.0,removable=on \
+  -netdev user,id=net0,ipv6=off \
+  -device virtio-net-pci,id=net0dev,netdev=net0,disable-legacy=on,mac=52:54:00:12:34:56 \
+  -device virtio-rng-pci \
+  -device ramfb \
+  -rtc base=localtime \
+  -object secret,id=vncpass,data=1234 \
+  -display vnc=127.0.0.1:8,password-secret=vncpass \
+  -monitor tcp:127.0.0.1:55555,server=on,wait=off
+'
+
+
+### INSTALL NET DRIVERS
+
+curl -L --fail \
+  -o "$HOME/Downloads/virtio-win.iso" \
+  "https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso"
+
+adb push \
+  "$HOME/Downloads/virtio-win.iso" \
+  /sdcard/Limbo/virtio-win.iso
+
+### VNC to open the connection on the Mac with password 1234
+
+adb forward tcp:5908 tcp:5908
+open vnc://127.0.0.1:5908
+
+### CHANGE AFFINITY
+
+su -c '
+pid=$(pidof qemu-system-aarch64)
+
+for task in /proc/$pid/task/*; do
+    taskset -p c0 "${task##*/}"
+done
+'

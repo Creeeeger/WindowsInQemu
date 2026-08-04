@@ -1,0 +1,3 @@
+QEMU_VARS.fd binary
+libkvm_flash0_only.so binary
+limbo_kvm_untrusted29.zip binary
