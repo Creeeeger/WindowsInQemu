@@ -11,7 +11,6 @@ SHIM=/data/local/tmp/libkvm_flash0_only.so
 
 VCPUS=${VCPUS:-6}
 MEMORY_MB=${MEMORY_MB:-4096}
-CPU_MASK=${CPU_MASK:-ff}
 ATTACH_VIRTIO_ISO=${ATTACH_VIRTIO_ISO:-0}
 INSTALL_WINDOWS=${INSTALL_WINDOWS:-0}
 
@@ -73,10 +72,10 @@ if [ "$ATTACH_VIRTIO_ISO" = 1 ]; then
 fi
 
 if [ "$INSTALL_WINDOWS" = 1 ]; then
-    echo "Starting Windows installation: ${VCPUS} vCPUs, ${MEMORY_MB} MB RAM, host CPU mask ${CPU_MASK}"
+    echo "Starting Windows installation: ${VCPUS} vCPUs, ${MEMORY_MB} MB RAM"
 else
-    echo "Starting Windows: ${VCPUS} vCPUs, ${MEMORY_MB} MB RAM, host CPU mask ${CPU_MASK}"
+    echo "Starting Windows: ${VCPUS} vCPUs, ${MEMORY_MB} MB RAM"
 fi
-exec /system/bin/taskset "$CPU_MASK" /system/bin/env \
+exec /system/bin/env \
     LD_PRELOAD="$SHIM" \
     "$@"

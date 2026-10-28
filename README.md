@@ -42,21 +42,8 @@ kernel.
 
 ## Tested host assumptions
 
-The default launcher assumes this heterogeneous eight-CPU topology:
-
-| Host CPUs | Cluster | Affinity mask |
-|-----------|---------|---------------|
-| CPU 0–3   | Little  | `0f`          |
-| CPU 4–5   | Middle  | `30`          |
-| CPU 6–7   | Big     | `c0`          |
-
-QEMU is pinned to mask `c0`. This is important on the tested old ARM KVM kernel: allowing vCPU threads to migrate
-between clusters with different cache geometry can cause register restore failures such as:
-
-```text
-Could not set register demuxed reg ...
-Failed to put registers after reset: Invalid argument
-```
+The launcher leaves host CPU placement to Android. On heterogeneous hosts, use a KVM kernel that normalizes guest
+cache identification registers so their values remain consistent when a vCPU moves between CPU implementations.
 
 ## Repository files
 
@@ -235,7 +222,6 @@ Defaults:
 ```text
 Guest vCPUs:     6
 Guest RAM:       4096 MiB
-Host CPU mask:   c0 (host CPUs 6–7)
 Disk:            NVMe, /sdcard/Limbo/win.qcow2
 Display:         ramfb over VNC
 Network:         virtio-net-pci over QEMU user NAT
@@ -243,13 +229,10 @@ VNC:             127.0.0.1:5908, password 1234
 Monitor:         127.0.0.1:55555 on the phone
 ```
 
-The six guest vCPUs time-share the two pinned physical host CPUs. The pinning is for KVM correctness on the tested
-heterogeneous SoC, not a claim that six host cores are being used.
-
-Override CPU count, memory, or affinity when needed:
+Override CPU count or memory when needed:
 
 ```sh
-su -c 'VCPUS=4 MEMORY_MB=3072 CPU_MASK=c0 /data/local/tmp/start-win10-kvm.sh'
+su -c 'VCPUS=4 MEMORY_MB=3072 /data/local/tmp/start-win10-kvm.sh'
 ```
 
 ## 9. Install the Windows ARM64 network driver
@@ -368,8 +351,8 @@ cannot repair a missing host hypervisor.
 
 ### `Could not set register demuxed reg ...`
 
-Make sure the full QEMU process is pinned to one homogeneous CPU cluster. Do not replace the tested `c0` mask with `ff`
-on the described topology.
+Use a host KVM kernel with normalized cache identification registers. Older kernels can reject saved register values
+after a thread moves between CPU implementations with different cache geometry.
 
 ### `Guest has not initialized the display yet`
 
@@ -380,16 +363,3 @@ exactly 64 MiB pflash images.
 
 Attach `virtio-win.iso` and install `NetKVM\w10\ARM64\netkvm.inf`. The former QEMU `usb-net` experiment is intentionally
 not used because Windows probed it as a serial CDC interface rather than a working network adapter.
-
-### VM intermittently crashes during reset
-
-Confirm the launcher uses `CPU_MASK=c0` and that all QEMU threads inherited the mask:
-
-```sh
-su -c '
-pid=$(pidof qemu-system-aarch64)
-for task in /proc/$pid/task/*; do
-    taskset -p "${task##*/}"
-done
-'
-```

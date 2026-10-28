@@ -1,13 +1,6 @@
 NOTE: The maintained and recommended launcher is start-win10-kvm.sh.
 The commands below are retained as development notes only.
 
-In case of crashes use these masks to prevent them lol
-Host CPUs	Cluster	Affinity mask
-CPU0–CPU3	Little	0f
-CPU4–CPU5	Middle	30
-CPU6–CPU7	Big 	c0
-For: /system/bin/taskset c0 /system/bin/env
-
 ### INSTALL IN TERMUX
 
 pkg update
@@ -17,7 +10,7 @@ pkg install qemu-system-aarch64-headless qemu-utils
 ### WIN ISO DVD
 
 su -c "
-/system/bin/taskset c0 /system/bin/env \
+/system/bin/env \
 LD_PRELOAD=/data/local/tmp/libkvm_flash0_only.so \
 /data/data/com.termux/files/usr/bin/qemu-system-aarch64 \
   -name Win10-ARM64 \
@@ -48,7 +41,7 @@ LD_PRELOAD=/data/local/tmp/libkvm_flash0_only.so \
 ### WIN HARD DRIVE W NET
 
 su -c '
-exec /system/bin/taskset c0 /system/bin/env \
+exec /system/bin/env \
 LD_PRELOAD=/data/local/tmp/libkvm_flash0_only.so \
 /data/data/com.termux/files/usr/bin/qemu-system-aarch64 \
   -name Win10-ARM64 \
@@ -91,13 +84,3 @@ adb push \
 
 adb forward tcp:5908 tcp:5908
 open vnc://127.0.0.1:5908
-
-### CHANGE AFFINITY
-
-su -c '
-pid=$(pidof qemu-system-aarch64)
-
-for task in /proc/$pid/task/*; do
-    taskset -p c0 "${task##*/}"
-done
-'
