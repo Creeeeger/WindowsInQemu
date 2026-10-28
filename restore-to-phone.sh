@@ -83,7 +83,7 @@ restore_windows_disk() {
 }
 
 echo '[1/4] Preparing target directories'
-"$ADB" shell mkdir -p /sdcard/Limbo
+"$ADB" shell "su -c 'mkdir -p /data/media/0/Limbo'" || "$ADB" shell mkdir -p /sdcard/Limbo
 
 echo '[2/4] Restoring UEFI variables, the Windows disk, and ISOs'
 "$ADB" push "$ROOT/QEMU_VARS.fd" /sdcard/Limbo/QEMU_VARS.fd

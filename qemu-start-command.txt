@@ -19,12 +19,12 @@ LD_PRELOAD=/data/local/tmp/libkvm_flash0_only.so \
   -smp 6,sockets=1,cores=6,threads=1 \
   -m 4096 \
   -drive if=pflash,format=raw,unit=0,readonly=on,file=/data/data/com.termux/files/usr/share/qemu/edk2-aarch64-code.fd \
-  -drive if=pflash,format=raw,unit=1,file=/sdcard/Limbo/QEMU_VARS.fd \
+  -drive if=pflash,format=raw,unit=1,file=/data/media/0/Limbo/QEMU_VARS.fd \
   -device ich9-ahci,id=sata \
-  -drive if=none,id=system,format=qcow2,file=/sdcard/Limbo/win.qcow2,cache=writeback,aio=threads,discard=unmap \
+  -drive if=none,id=system,format=qcow2,file=/data/media/0/Limbo/win.qcow2,cache=writeback,aio=threads,discard=unmap \
   -device ide-hd,drive=system,bus=sata.0,bootindex=2 \
   -device qemu-xhci,id=xhci \
-  -drive if=none,id=installer,format=raw,media=cdrom,readonly=on,file=/sdcard/Limbo/win10.iso \
+  -drive if=none,id=installer,format=raw,media=cdrom,readonly=on,file=/data/media/0/Limbo/win10.iso \
   -device usb-storage,drive=installer,bus=xhci.0,bootindex=1,removable=on \
   -device usb-kbd,bus=xhci.0 \
   -device usb-tablet,bus=xhci.0 \
@@ -34,6 +34,8 @@ LD_PRELOAD=/data/local/tmp/libkvm_flash0_only.so \
   -device virtio-rng-pci \
   -rtc base=localtime \
   -object secret,id=vncpass,data=1234 \
+  -audiodev pa,id=snd0,server=127.0.0.1 \
+  -device usb-audio,audiodev=snd0,bus=xhci.0 \
   -display vnc=127.0.0.1:8,password-secret=vncpass \
   -monitor tcp:127.0.0.1:55555,server=on,wait=off
 "
@@ -50,14 +52,14 @@ LD_PRELOAD=/data/local/tmp/libkvm_flash0_only.so \
   -smp 6,sockets=1,cores=6,threads=1 \
   -m 4096 \
   -drive if=pflash,format=raw,unit=0,readonly=on,file=/data/data/com.termux/files/usr/share/qemu/edk2-aarch64-code.fd \
-  -drive if=pflash,format=raw,unit=1,file=/sdcard/Limbo/QEMU_VARS.fd \
-  -drive if=none,id=system,format=qcow2,file=/sdcard/Limbo/win.qcow2,cache=writeback,aio=threads,discard=unmap \
+  -drive if=pflash,format=raw,unit=1,file=/data/media/0/Limbo/QEMU_VARS.fd \
+  -drive if=none,id=system,format=qcow2,file=/data/media/0/Limbo/win.qcow2,cache=writeback,aio=threads,discard=unmap \
   -device nvme,id=nvme0,drive=system,serial=WIN10NVME,bootindex=1 \
   -boot order=c,menu=on \
   -device qemu-xhci,id=xhci \
   -device usb-kbd,bus=xhci.0 \
   -device usb-tablet,bus=xhci.0 \
-  -drive if=none,id=virtiodrv,format=raw,media=cdrom,readonly=on,file=/sdcard/Limbo/virtio-win.iso \
+  -drive if=none,id=virtiodrv,format=raw,media=cdrom,readonly=on,file=/data/media/0/Limbo/virtio-win.iso \
   -device usb-storage,id=virtiocd,drive=virtiodrv,bus=xhci.0,removable=on \
   -netdev user,id=net0,ipv6=off \
   -device virtio-net-pci,id=net0dev,netdev=net0,disable-legacy=on,mac=52:54:00:12:34:56 \
@@ -65,6 +67,8 @@ LD_PRELOAD=/data/local/tmp/libkvm_flash0_only.so \
   -device ramfb \
   -rtc base=localtime \
   -object secret,id=vncpass,data=1234 \
+  -audiodev pa,id=snd0,server=127.0.0.1 \
+  -device usb-audio,audiodev=snd0,bus=xhci.0 \
   -display vnc=127.0.0.1:8,password-secret=vncpass \
   -monitor tcp:127.0.0.1:55555,server=on,wait=off
 '
@@ -78,7 +82,7 @@ curl -L --fail \
 
 adb push \
   "$HOME/Downloads/virtio-win.iso" \
-  /sdcard/Limbo/virtio-win.iso
+  /data/media/0/Limbo/virtio-win.iso
 
 ### VNC to open the connection on the Mac with password 1234
 

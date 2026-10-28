@@ -2,17 +2,22 @@
 set -eu
 
 QEMU=/data/data/com.termux/files/usr/bin/qemu-system-aarch64
+PULSE=/data/data/com.termux/files/usr/bin/pulseaudio
 FIRMWARE=/data/data/com.termux/files/usr/share/qemu/edk2-aarch64-code.fd
-VARS=/sdcard/Limbo/QEMU_VARS.fd
-DISK=/sdcard/Limbo/win.qcow2
-WINDOWS_ISO=/sdcard/Limbo/win10.iso
-VIRTIO_ISO=/sdcard/Limbo/virtio-win.iso
+LIMBO_DIR=/data/media/0/Limbo
+[ -d "$LIMBO_DIR" ] || LIMBO_DIR=/sdcard/Limbo
+
+VARS=$LIMBO_DIR/QEMU_VARS.fd
+DISK=$LIMBO_DIR/win.qcow2
+WINDOWS_ISO=$LIMBO_DIR/win10.iso
+VIRTIO_ISO=$LIMBO_DIR/virtio-win.iso
 SHIM=/data/local/tmp/libkvm_flash0_only.so
 
 VCPUS=${VCPUS:-6}
 MEMORY_MB=${MEMORY_MB:-4096}
 ATTACH_VIRTIO_ISO=${ATTACH_VIRTIO_ISO:-0}
 INSTALL_WINDOWS=${INSTALL_WINDOWS:-0}
+ENABLE_AUDIO=${ENABLE_AUDIO:-1}
 
 for required in "$QEMU" "$FIRMWARE" "$VARS" "$DISK" "$SHIM"; do
     if [ ! -f "$required" ]; then
@@ -24,6 +29,17 @@ done
 if pidof qemu-system-aarch64 >/dev/null 2>&1; then
     echo "QEMU is already running. Shut down the existing VM cleanly first." >&2
     exit 1
+fi
+
+if [ "$ENABLE_AUDIO" = 1 ]; then
+    if [ -x "$PULSE" ]; then
+        TERMUX_USER=$(stat -c %U /data/data/com.termux 2>/dev/null || echo "u0_a325")
+        if ! pidof pulseaudio >/dev/null 2>&1; then
+            su "$TERMUX_USER" -c 'env -i PATH=/data/data/com.termux/files/usr/bin LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib /data/data/com.termux/files/usr/bin/pulseaudio --load="module-sles-sink" --load="module-native-protocol-tcp auth-anonymous=1 auth-ip-acl=127.0.0.1" --exit-idle-time=-1 --daemonize=yes' >/dev/null 2>&1 || true
+        else
+            su "$TERMUX_USER" -c 'env PATH=/data/data/com.termux/files/usr/bin LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib /data/data/com.termux/files/usr/bin/pactl load-module module-native-protocol-tcp auth-anonymous=1 auth-ip-acl=127.0.0.1' >/dev/null 2>&1 || true
+        fi
+    fi
 fi
 
 set -- \
@@ -49,6 +65,12 @@ set -- \
     -object secret,id=vncpass,data=1234 \
     -display vnc=127.0.0.1:8,password-secret=vncpass \
     -monitor tcp:127.0.0.1:55555,server=on,wait=off
+
+if [ "$ENABLE_AUDIO" = 1 ]; then
+    set -- "$@" \
+        -audiodev pa,id=snd0,server=127.0.0.1 \
+        -device usb-audio,audiodev=snd0,bus=xhci.0
+fi
 
 if [ "$INSTALL_WINDOWS" = 1 ]; then
     if [ ! -f "$WINDOWS_ISO" ]; then

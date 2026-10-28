@@ -141,12 +141,15 @@ adb shell su -c \
 
 ## 5. Create a fresh Windows disk
 
-For a new installation, create a 64 GiB sparse QCOW2 disk in the normal Termux shell:
+For best I/O performance and to bypass Android's FUSE filesystem layer, QEMU accesses the disk directly on raw F2FS via
+`/data/media/0/Limbo/win.qcow2` (which is the direct underlying storage location backing `/sdcard/Limbo/win.qcow2`).
+
+For a new installation, create a 64 GiB sparse QCOW2 disk in the Termux shell:
 
 ```sh
-mkdir -p /sdcard/Limbo
-qemu-img create -f qcow2 /sdcard/Limbo/win.qcow2 64G
-qemu-img info /sdcard/Limbo/win.qcow2
+su -c 'mkdir -p /data/media/0/Limbo'
+su -c 'qemu-img create -f qcow2 /data/media/0/Limbo/win.qcow2 64G'
+su -c 'qemu-img info /data/media/0/Limbo/win.qcow2'
 ```
 
 Do not commit this file. The repository's `.gitignore` excludes it.
@@ -154,7 +157,7 @@ Do not commit this file. The repository's `.gitignore` excludes it.
 If an existing `win.qcow2` is being restored instead, copy it to:
 
 ```text
-/sdcard/Limbo/win.qcow2
+/data/media/0/Limbo/win.qcow2
 ```
 
 ## 6. Forward VNC and the QEMU monitor
@@ -222,9 +225,10 @@ Defaults:
 ```text
 Guest vCPUs:     6
 Guest RAM:       4096 MiB
-Disk:            NVMe, /sdcard/Limbo/win.qcow2
+Disk:            NVMe, /data/media/0/Limbo/win.qcow2
 Display:         ramfb over VNC
 Network:         virtio-net-pci over QEMU user NAT
+Audio:           usb-audio routed to PulseAudio
 VNC:             127.0.0.1:5908, password 1234
 Monitor:         127.0.0.1:55555 on the phone
 ```
@@ -235,7 +239,7 @@ Override CPU count or memory when needed:
 su -c 'VCPUS=4 MEMORY_MB=3072 /data/local/tmp/start-win10-kvm.sh'
 ```
 
-## 9. Install the Windows ARM64 network driver
+## 9. Install Windows ARM64 VirtIO drivers
 
 If the VirtIO driver ISO is not currently attached, start once with:
 
@@ -243,16 +247,25 @@ If the VirtIO driver ISO is not currently attached, start once with:
 su -c 'ATTACH_VIRTIO_ISO=1 /data/local/tmp/start-win10-kvm.sh'
 ```
 
-Inside Windows, find the VirtIO CD-ROM drive and install:
+Inside Windows, find the VirtIO CD-ROM drive (usually `D:`).
 
-```text
-NetKVM\w10\ARM64\netkvm.inf
-```
+From an Administrator Command Prompt or PowerShell, install the specific verified Windows 10 ARM64 drivers:
 
-From an Administrator Command Prompt, where `D:` is the actual VirtIO CD-ROM drive letter:
+### 1. Network Driver
+
+Installs the VirtIO network adapter driver for Internet and local connectivity:
 
 ```cmd
 pnputil /add-driver "D:\NetKVM\w10\ARM64\netkvm.inf" /install
+```
+
+### 2. VirtIO RNG Driver
+
+QEMU passes hardware entropy from the phone into Windows via `-device virtio-rng-pci`. Windows flags this as an unknown
+`PCI Device` until the driver is installed:
+
+```cmd
+pnputil /add-driver "D:\viorng\w10\ARM64\viorng.inf" /install
 ```
 
 If the CD is not `D:`, inspect the available drives and substitute the correct letter. Reboot Windows if requested.
@@ -287,7 +300,17 @@ The VirtIO ISO contains the ARM64 display-only driver:
 viogpudo\w10\ARM64\viogpudo.inf
 ```
 
-## 11. Backup an installed VM
+## 11. Audio setup
+
+Audio is enabled by default (`ENABLE_AUDIO=1` in `start-win10-kvm.sh`):
+
+To disable audio if needed:
+
+```sh
+su -c 'ENABLE_AUDIO=0 /data/local/tmp/start-win10-kvm.sh'
+```
+
+## 12. Backup an installed VM
 
 First shut Windows down completely. Do not back up a live QCOW2/NVRAM pair.
 
@@ -300,10 +323,10 @@ Then, from the repository directory on the Mac:
 The script refuses to run while `qemu-system-aarch64` is active. It pulls:
 
 ```text
-/sdcard/Limbo/QEMU_VARS.fd
-/sdcard/Limbo/win.qcow2
-/sdcard/Limbo/win10.iso
-/sdcard/Limbo/virtio-win.iso
+/data/media/0/Limbo/QEMU_VARS.fd
+/data/media/0/Limbo/win.qcow2
+/data/media/0/Limbo/win10.iso
+/data/media/0/Limbo/virtio-win.iso
 /data/local/tmp/libkvm_flash0_only.so
 /data/local/tmp/kvm_flash0_only.c
 /data/local/tmp/limbo_kvm_untrusted29.zip
@@ -312,7 +335,7 @@ The script refuses to run while `qemu-system-aarch64` is active. It pulls:
 
 The three large files remain ignored by Git.
 
-## 12. Restore an existing complete backup
+## 13. Restore an existing complete backup
 
 Place the ignored local files next to `restore-to-phone.sh`:
 

@@ -29,12 +29,18 @@ pull_file() {
 }
 
 echo '[1/3] Backing up mutable VM data'
-pull_file /sdcard/Limbo/QEMU_VARS.fd "$ROOT/QEMU_VARS.fd"
-pull_file /sdcard/Limbo/win.qcow2 "$ROOT/win.qcow2"
+if "$ADB" shell su -c 'test -f /data/media/0/Limbo/win.qcow2'; then
+    REMOTE_DIR=/data/media/0/Limbo
+else
+    REMOTE_DIR=/sdcard/Limbo
+fi
+
+pull_file $REMOTE_DIR/QEMU_VARS.fd "$ROOT/QEMU_VARS.fd"
+pull_file $REMOTE_DIR/win.qcow2 "$ROOT/win.qcow2"
 
 echo '[2/3] Backing up installation and driver ISOs'
-pull_file /sdcard/Limbo/win10.iso "$ROOT/win10.iso"
-pull_file /sdcard/Limbo/virtio-win.iso "$ROOT/virtio-win.iso"
+pull_file $REMOTE_DIR/win10.iso "$ROOT/win10.iso"
+pull_file $REMOTE_DIR/virtio-win.iso "$ROOT/virtio-win.iso"
 
 echo '[3/3] Backing up KVM helper files'
 pull_file /data/local/tmp/libkvm_flash0_only.so "$ROOT/libkvm_flash0_only.so"
