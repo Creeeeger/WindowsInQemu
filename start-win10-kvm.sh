@@ -13,11 +13,12 @@ WINDOWS_ISO=$LIMBO_DIR/win10.iso
 VIRTIO_ISO=$LIMBO_DIR/virtio-win.iso
 SHIM=/data/local/tmp/libkvm_flash0_only.so
 
-VCPUS=${VCPUS:-6}
+VCPUS=${VCPUS:-4}
 MEMORY_MB=${MEMORY_MB:-4096}
 ATTACH_VIRTIO_ISO=${ATTACH_VIRTIO_ISO:-0}
 INSTALL_WINDOWS=${INSTALL_WINDOWS:-0}
 ENABLE_AUDIO=${ENABLE_AUDIO:-1}
+CPU_AFFINITY_MASK=${CPU_AFFINITY_MASK:-f0}
 
 for required in "$QEMU" "$FIRMWARE" "$VARS" "$DISK" "$SHIM"; do
     if [ ! -f "$required" ]; then
@@ -34,10 +35,28 @@ fi
 if [ "$ENABLE_AUDIO" = 1 ]; then
     if [ -x "$PULSE" ]; then
         TERMUX_USER=$(stat -c %U /data/data/com.termux 2>/dev/null || echo "u0_a325")
-        if ! pidof pulseaudio >/dev/null 2>&1; then
-            su "$TERMUX_USER" -c 'env -i PATH=/data/data/com.termux/files/usr/bin LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib /data/data/com.termux/files/usr/bin/pulseaudio --load="module-sles-sink" --load="module-native-protocol-tcp auth-anonymous=1 auth-ip-acl=127.0.0.1" --exit-idle-time=-1 --daemonize=yes' >/dev/null 2>&1 || true
-        else
-            su "$TERMUX_USER" -c 'env PATH=/data/data/com.termux/files/usr/bin LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib /data/data/com.termux/files/usr/bin/pactl load-module module-native-protocol-tcp auth-anonymous=1 auth-ip-acl=127.0.0.1' >/dev/null 2>&1 || true
+        pulse_ready=0
+        if pidof pulseaudio >/dev/null 2>&1; then
+            if su "$TERMUX_USER" -c 'env PULSE_SERVER=127.0.0.1 LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib /data/data/com.termux/files/usr/bin/pactl info' >/dev/null 2>&1; then
+                pulse_ready=1
+            else
+                echo "PulseAudio is unresponsive (stale zombie). Restarting it..."
+                killall -9 pulseaudio >/dev/null 2>&1 || true
+                sleep 0.5
+            fi
+        fi
+
+        if [ "$pulse_ready" = 0 ]; then
+            su "$TERMUX_USER" -c 'env -i PATH=/data/data/com.termux/files/usr/bin LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib /data/data/com.termux/files/usr/bin/pulseaudio --load="module-aaudio-sink" --load="module-native-protocol-tcp auth-anonymous=1 auth-ip-acl=127.0.0.1" --exit-idle-time=-1 --daemonize=yes' >/dev/null 2>&1 || true
+            sleep 0.5
+            if su "$TERMUX_USER" -c 'env PULSE_SERVER=127.0.0.1 LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib /data/data/com.termux/files/usr/bin/pactl info' >/dev/null 2>&1; then
+                pulse_ready=1
+            fi
+        fi
+
+        if [ "$pulse_ready" = 0 ]; then
+            echo "Warning: PulseAudio is not available. Booting Windows without audio." >&2
+            ENABLE_AUDIO=0
         fi
     fi
 fi
@@ -98,6 +117,13 @@ if [ "$INSTALL_WINDOWS" = 1 ]; then
 else
     echo "Starting Windows: ${VCPUS} vCPUs, ${MEMORY_MB} MB RAM"
 fi
-exec /system/bin/env \
-    LD_PRELOAD="$SHIM" \
-    "$@"
+if [ -n "${CPU_AFFINITY_MASK:-}" ]; then
+    echo "Applying CPU affinity mask: ${CPU_AFFINITY_MASK}"
+    exec taskset "$CPU_AFFINITY_MASK" /system/bin/env \
+        LD_PRELOAD="$SHIM" \
+        "$@"
+else
+    exec /system/bin/env \
+        LD_PRELOAD="$SHIM" \
+        "$@"
+fi
