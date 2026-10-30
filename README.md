@@ -1,8 +1,8 @@
 # Windows 10 ARM64 in QEMU/KVM on rooted Android
 
 This repository contains the small, reproducible part of a working Windows 10 ARM64 QEMU/KVM setup for Android. It
-includes the writable EDK2 NVRAM image, a compatibility shim for an older ARM KVM implementation, launch/backup/restore
-scripts, and an optional KernelSU SELinux module.
+includes the writable EDK2 NVRAM image, a compatibility shim for an older ARM KVM implementation, and launch/backup/restore
+scripts.
 
 It does **not** contain Windows, a preinstalled Windows disk, or the VirtIO driver ISO. Those three large files must be
 supplied locally and are explicitly excluded by `.gitignore`:
@@ -42,7 +42,7 @@ kernel.
 
 ## Tested host assumptions
 
-The launcher leaves host CPU placement to Android. On heterogeneous hosts, use a KVM kernel that normalizes guest
+The launcher leaves host CPU placement to Android. The tested host kernel includes a backport that normalizes guest
 cache identification registers so their values remain consistent when a vCPU moves between CPU implementations.
 
 ## Repository files
@@ -55,7 +55,6 @@ cache identification registers so their values remain consistent when a vCPU mov
 | `start-win10-kvm.sh`        | Windows installer and normal-boot launcher                                             |
 | `restore-to-phone.sh`       | Restores a complete local VM backup to the phone                                       |
 | `backup-from-phone.sh`      | Pulls mutable VM state and local media from the phone                                  |
-| `limbo_kvm_untrusted29.zip` | KernelSU policy module for direct Limbo access to `/dev/kvm`                           |
 | `qemu-start-command.txt`    | Command notes from development                                                         |
 
 ## 1. Install Termux and QEMU
@@ -329,7 +328,6 @@ The script refuses to run while `qemu-system-aarch64` is active. It pulls:
 /data/media/0/Limbo/virtio-win.iso
 /data/local/tmp/libkvm_flash0_only.so
 /data/local/tmp/kvm_flash0_only.c
-/data/local/tmp/limbo_kvm_untrusted29.zip
 /data/local/tmp/start-win10-kvm.sh
 ```
 
@@ -356,33 +354,3 @@ After the transfer finishes, start the VM from inside Termux:
 ```sh
 su -c '/data/local/tmp/start-win10-kvm.sh'
 ```
-
-## SELinux module
-
-`limbo_kvm_untrusted29.zip` grants the `untrusted_app_29` SELinux domain access to `kvm_device`. This was created for
-starting KVM directly from a compatible Limbo app build. It is **not required** for the documented Root/Termux launcher.
-
-The policy applies to every app in `untrusted_app_29`, not only Limbo. Review that security trade-off before installing
-it through KernelSU.
-
-## Troubleshooting
-
-### `kvm support: enabled` does not appear
-
-Check `/dev/kvm`, kernel KVM configuration, EL2 availability, root permission, and SELinux denials. This repository
-cannot repair a missing host hypervisor.
-
-### `Could not set register demuxed reg ...`
-
-Use a host KVM kernel with normalized cache identification registers. Older kernels can reject saved register values
-after a thread moves between CPU implementations with different cache geometry.
-
-### `Guest has not initialized the display yet`
-
-For the default Windows setup, ensure `-device ramfb` remains enabled and that the EDK2 code/variables files are both
-exactly 64 MiB pflash images.
-
-### No network adapter in Windows
-
-Attach `virtio-win.iso` and install `NetKVM\w10\ARM64\netkvm.inf`. The former QEMU `usb-net` experiment is intentionally
-not used because Windows probed it as a serial CDC interface rather than a working network adapter.

@@ -17,7 +17,6 @@ $ROOT/win10.iso
 $ROOT/virtio-win.iso
 $ROOT/libkvm_flash0_only.so
 $ROOT/kvm_flash0_only.c
-$ROOT/limbo_kvm_untrusted29.zip
 $ROOT/start-win10-kvm.sh
 "
 
@@ -91,12 +90,11 @@ restore_windows_disk
 "$ADB" push "$ROOT/win10.iso" /sdcard/Limbo/win10.iso
 "$ADB" push "$ROOT/virtio-win.iso" /sdcard/Limbo/virtio-win.iso
 
-echo '[3/4] Installing the KVM shim, source, SELinux module, and launcher'
+echo '[3/4] Installing the KVM shim, source, and launcher'
 "$ADB" push "$ROOT/libkvm_flash0_only.so" /data/local/tmp/libkvm_flash0_only.so
 "$ADB" push "$ROOT/kvm_flash0_only.c" /data/local/tmp/kvm_flash0_only.c
-"$ADB" push "$ROOT/limbo_kvm_untrusted29.zip" /data/local/tmp/limbo_kvm_untrusted29.zip
 "$ADB" push "$ROOT/start-win10-kvm.sh" /data/local/tmp/start-win10-kvm.sh
-"$ADB" shell "su -c 'chown root:root /data/local/tmp/libkvm_flash0_only.so /data/local/tmp/start-win10-kvm.sh && chmod 755 /data/local/tmp/libkvm_flash0_only.so /data/local/tmp/start-win10-kvm.sh && chmod 644 /data/local/tmp/kvm_flash0_only.c /data/local/tmp/limbo_kvm_untrusted29.zip'"
+"$ADB" shell "su -c 'chown root:root /data/local/tmp/libkvm_flash0_only.so /data/local/tmp/start-win10-kvm.sh && chmod 755 /data/local/tmp/libkvm_flash0_only.so /data/local/tmp/start-win10-kvm.sh && chmod 644 /data/local/tmp/kvm_flash0_only.c'"
 
 echo '[4/4] Forwarding VNC and monitor ports'
 "$ADB" forward tcp:5908 tcp:5908
@@ -118,7 +116,4 @@ Temporarily attach the VirtIO driver CD from the Termux app:
 VNC:
   vnc://127.0.0.1:5908
   Password: 1234
-
-The SELinux module is only required for direct KVM access from
-Limbo/untrusted_app_29. It is not required for the root/Termux launch above.
 EOF

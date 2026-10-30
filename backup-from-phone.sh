@@ -45,7 +45,6 @@ pull_file $REMOTE_DIR/virtio-win.iso "$ROOT/virtio-win.iso"
 echo '[3/3] Backing up KVM helper files'
 pull_file /data/local/tmp/libkvm_flash0_only.so "$ROOT/libkvm_flash0_only.so"
 pull_file /data/local/tmp/kvm_flash0_only.c "$ROOT/kvm_flash0_only.c"
-pull_file /data/local/tmp/limbo_kvm_untrusted29.zip "$ROOT/limbo_kvm_untrusted29.zip"
 
 if "$ADB" shell test -f /data/local/tmp/start-win10-kvm.sh; then
     pull_file /data/local/tmp/start-win10-kvm.sh "$ROOT/start-win10-kvm.sh"
