@@ -16,7 +16,7 @@ LD_PRELOAD=/data/local/tmp/libkvm_flash0_only.so \
   -name Win10-ARM64 \
   -machine virt,accel=kvm,gic-version=host \
   -cpu host \
-  -smp 6,sockets=1,cores=6,threads=1 \
+  -smp 4,sockets=1,cores=4,threads=1 \
   -m 4096 \
   -drive if=pflash,format=raw,unit=0,readonly=on,file=/data/data/com.termux/files/usr/share/qemu/edk2-aarch64-code.fd \
   -drive if=pflash,format=raw,unit=1,file=/data/media/0/Limbo/QEMU_VARS.fd \
@@ -49,7 +49,7 @@ LD_PRELOAD=/data/local/tmp/libkvm_flash0_only.so \
   -name Win10-ARM64 \
   -machine virt,accel=kvm,gic-version=host \
   -cpu host \
-  -smp 6,sockets=1,cores=6,threads=1 \
+  -smp 4,sockets=1,cores=4,threads=1 \
   -m 4096 \
   -drive if=pflash,format=raw,unit=0,readonly=on,file=/data/data/com.termux/files/usr/share/qemu/edk2-aarch64-code.fd \
   -drive if=pflash,format=raw,unit=1,file=/data/media/0/Limbo/QEMU_VARS.fd \

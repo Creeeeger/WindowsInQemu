@@ -1,7 +1,8 @@
 # Windows 10 ARM64 in QEMU/KVM on rooted Android
 
 This repository contains the small, reproducible part of a working Windows 10 ARM64 QEMU/KVM setup for Android. It
-includes the writable EDK2 NVRAM image, a compatibility shim for an older ARM KVM implementation, and launch/backup/restore
+includes the writable EDK2 NVRAM image, a compatibility shim for an older ARM KVM implementation, and
+launch/backup/restore
 scripts.
 
 It does **not** contain Windows, a preinstalled Windows disk, or the VirtIO driver ISO. Those three large files must be
@@ -40,22 +41,17 @@ crw-rw-rw- root root u:object_r:kvm_device:s0 /dev/kvm
 If `/dev/kvm` does not exist, stop here. Installing QEMU or copying this repository cannot add KVM support to a stock
 kernel.
 
-## Tested host assumptions
-
-The launcher leaves host CPU placement to Android. The tested host kernel includes a backport that normalizes guest
-cache identification registers so their values remain consistent when a vCPU moves between CPU implementations.
-
 ## Repository files
 
-| File                        | Purpose                                                                                |
-|-----------------------------|----------------------------------------------------------------------------------------|
-| `QEMU_VARS.fd`              | Writable 64 MiB EDK2 NVRAM/UEFI variable store                                         |
-| `libkvm_flash0_only.so`     | `LD_PRELOAD` shim that clears `KVM_MEM_READONLY` only for the first pflash memory slot |
-| `kvm_flash0_only.c`         | Source for the shim                                                                    |
-| `start-win10-kvm.sh`        | Windows installer and normal-boot launcher                                             |
-| `restore-to-phone.sh`       | Restores a complete local VM backup to the phone                                       |
-| `backup-from-phone.sh`      | Pulls mutable VM state and local media from the phone                                  |
-| `qemu-start-command.txt`    | Command notes from development                                                         |
+| File                     | Purpose                                                                                |
+|--------------------------|----------------------------------------------------------------------------------------|
+| `QEMU_VARS.fd`           | Writable 64 MiB EDK2 NVRAM/UEFI variable store                                         |
+| `libkvm_flash0_only.so`  | `LD_PRELOAD` shim that clears `KVM_MEM_READONLY` only for the first pflash memory slot |
+| `kvm_flash0_only.c`      | Source for the shim                                                                    |
+| `start-win10-kvm.sh`     | Windows installer and normal-boot launcher                                             |
+| `restore-to-phone.sh`    | Restores a complete local VM backup to the phone                                       |
+| `backup-from-phone.sh`   | Pulls mutable VM state and local media from the phone                                  |
+| `qemu-start-command.txt` | Command notes from development                                                         |
 
 ## 1. Install Termux and QEMU
 
@@ -222,7 +218,8 @@ su -c '/data/local/tmp/start-win10-kvm.sh'
 Defaults:
 
 ```text
-Guest vCPUs:     6
+Guest vCPUs:     4
+CPU affinity:    f0 (host CPUs 4–7)
 Guest RAM:       4096 MiB
 Disk:            NVMe, /data/media/0/Limbo/win.qcow2
 Display:         ramfb over VNC
